@@ -1,0 +1,97 @@
+//air pressure sensor
+int rightClockPin=19;
+int leftClockPin=9;
+int leftSensorPin=7;
+int rightSensorPin=17;
+int gripThreshold=10000000;
+
+//step pressure sensor
+int sensorPin=A8 ;
+int sensorReading;
+bool hasReset= true;
+int pressThreshold=410;
+int resetThreshold=600;
+
+void setup() {
+  pinMode(leftSensorPin, INPUT); 
+  pinMode(rightSensorPin, INPUT); 
+  pinMode(leftClockPin, OUTPUT);  
+  pinMode(rightClockPin, OUTPUT);  
+
+
+  Serial.begin(9600);
+}
+
+void ReadStepPressure(){
+    sensorReading=analogRead(sensorPin);
+  Serial.println(sensorReading);
+  
+  if(sensorReading<pressThreshold && hasReset){
+    Keyboard.press(KEY_SPACE);
+    delay(300);
+    Keyboard.release(KEY_SPACE);
+    hasReset=false;
+  }
+
+  if(sensorReading>resetThreshold && !hasReset){
+     hasReset=true;
+  }
+}
+
+void ReadAirPressure(){
+  // wait for the current reading to finish
+while (digitalRead(rightSensorPin)||digitalRead(leftSensorPin)) {}
+  // read 24 bits
+  long rightResult = 0;
+  long leftResult = 0;
+  for (int i = 0; i < 24; i++) {
+    digitalWrite(leftClockPin, HIGH);
+    digitalWrite(leftClockPin, LOW);
+    digitalWrite(rightClockPin, HIGH);
+    digitalWrite(rightClockPin, LOW);
+    rightResult = rightResult << 1;
+    leftResult = leftResult << 1;
+    if (digitalRead(rightSensorPin)) {
+      rightResult++;
+    }
+    if (digitalRead(leftSensorPin)) {
+      leftResult++;
+    }
+  }
+
+  // get the 2s compliment
+   rightResult =  rightResult ^ 0x800000;
+ leftResult = leftResult ^ 0x800000;
+
+  // pulse the clock line 3 times to start the next pressure reading
+  for (char i = 0; i < 3; i++) {
+    digitalWrite(leftClockPin, HIGH);
+    digitalWrite(leftClockPin, LOW);
+    digitalWrite(rightClockPin, HIGH);
+    digitalWrite(rightClockPin, LOW);
+  }
+
+  // press key
+  if (rightResult>gripThreshold){
+    Keyboard.press(KEY_D);
+       delay(300);
+    Keyboard.release(KEY_D);
+  }
+
+   if (leftResult>gripThreshold){
+    Keyboard.press(KEY_A);
+        delay(300);
+    Keyboard.release(KEY_A);
+  }
+
+  //print
+  //   Serial.print("rightResult: ");
+  // Serial.println(rightResult);
+  //   Serial.print("leftResult: ");
+  // Serial.println(leftResult);
+}
+
+void loop() { 
+  ReadStepPressure();
+  ReadAirPressure();
+}
